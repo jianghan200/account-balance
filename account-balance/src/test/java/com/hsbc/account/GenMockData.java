@@ -1,32 +1,21 @@
 package com.hsbc.account;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
 
-@Tag("integration")
-@ExtendWith(SpringExtension.class)
+/**
+ * 用于生成测试数据
+ */
 @SpringBootTest
-@AutoConfigureMockMvc
 public class GenMockData {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
 
 
     // 执行这个函数，插入 101个新账户，每个账户 10000 分（100 元）
+    // @Test
     public void insertAccountBalanceRecords() {
         String sql = "INSERT INTO account_balance (user_id, balance, version) VALUES (?, ?, ?)";
 
