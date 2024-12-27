@@ -3,15 +3,24 @@
 
 假设场景专注于高并发的余额更新
 
-使用微服务架构，以应对扩容和容灾的情形， 用户余额微服务
-缓存使用 Redis 本地测试使用 Mysql 阿里云使用 PG-SQL，和重试使用 
+使用微服务架构，以应对扩容和容灾的情形
+
+- 缓存使用 Redis 
+- 本地测试数据库使用 MySQL
+- 阿里云RDS使用 PostgreSQL
+
+
+
 
 -- account-balance  账户余额服务
--- common-lib 公共组件，本示例程序没有使用
--- docs  压力测试报告
--- k8s  k8s部署文件（阿里云）
--- deploy.sh  minikube 部署脚步
 
+-- common-lib 公共组件，本示例程序没有使用
+
+-- docs  压力测试报告
+
+-- k8s  k8s部署文件（阿里云ACK部署，连接阿里云RDS和 阿里云Redis）
+
+-- deploy.sh  minikube 部署脚步
 
 
 执行 AccountBalanceApplication.class 本地启动程序
@@ -42,6 +51,4 @@
 
 本地测试机器参数： Mac2.4GHz 8核心 i9（16-inch 2019 款）32G内存 部署 mysql 和 redis，开启其他很多程序，理论上TPS 在专用服务器可以更高
 
-## 复原力测试
-依赖于阿里云 ACK 
 
