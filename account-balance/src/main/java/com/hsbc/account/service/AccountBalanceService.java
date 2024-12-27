@@ -48,18 +48,20 @@ public class AccountBalanceService {
 
     private final ConcurrentHashMap<Long, Long> inMemoryBalances = new ConcurrentHashMap<>();
 
-    @Autowired
+//    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     public AccountBalanceService(AccountBalanceRepo balanceRepo, TransferLogRepo transactionLogRepo,
                                  RedisOperations<String, String> redisOperations,
                                  ApplicationEventPublisher eventPublisher,
+                                 JdbcTemplate jdbcTemplate,
                                  @Value("${service.lock.timeout}") Duration lockTimeout) {
         this.accountBalanceRepo = balanceRepo;
         this.transferLogRepo = transactionLogRepo;
         this.redisOperations = redisOperations;
         this.eventPublisher = eventPublisher;
         this.lockTimeout = lockTimeout;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
 
