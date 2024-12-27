@@ -1,0 +1,34 @@
+{
+  "transfer 随机用户" : {
+    "transaction" : "transfer 随机用户",
+    "sampleCount" : 40000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 15.007974999999954,
+    "medianResTime" : 12.0,
+    "minResTime" : 3.0,
+    "maxResTime" : 134.0,
+    "pct1ResTime" : 29.0,
+    "pct2ResTime" : 30.0,
+    "pct3ResTime" : 34.0,
+    "throughput" : 1227.031504033866,
+    "receivedKBytesPerSec" : 274.05700711678276,
+    "sentKBytesPerSec" : 376.0643359938189
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 40000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 15.007974999999954,
+    "medianResTime" : 12.0,
+    "minResTime" : 3.0,
+    "maxResTime" : 134.0,
+    "pct1ResTime" : 29.0,
+    "pct2ResTime" : 30.0,
+    "pct3ResTime" : 34.0,
+    "throughput" : 1227.031504033866,
+    "receivedKBytesPerSec" : 274.05700711678276,
+    "sentKBytesPerSec" : 376.0643359938189
+  }
+}

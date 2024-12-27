@@ -1,0 +1,99 @@
+endpoint:
+  accountBalanceService: http://localhost:8082
+
+server:
+  port: 8082
+  tomcat:
+    threads:
+      # The default value 200 is too high which would slow down the application.
+      # TPS will increase from 250 to 400 by changing the value to around 8 to 16 (based on CPU cores).
+      max: 8
+    connection-timeout: 20s
+    max-keep-alive-requests: 100
+
+spring:
+  application:
+    name: account-balance
+  datasource:
+    url: jdbc:postgresql://pgm-bp1w84ki377iilkdoo.pg.rds.aliyuncs.com:5432/balance?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true
+    username: hsbc
+    password: PG@ali123
+#    we should not provide password here, should use secret and env parameter, this db is only for demo
+
+
+#    url: jdbc:mysql://localhost:3306/balance?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true
+#    username: root
+#    password: n0sql
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 2000
+  cache:
+    type: redis
+    redis:
+      enable-statistics: true
+  jpa:
+    open-in-view: false
+    show-sql=true:
+  task:
+    scheduling:
+      pool:
+        size: 4
+      simple:
+        concurrency-limit: 8
+
+  redis:
+#    url: redis://:redis*linode@localhost:6379/0
+     url: redis://:ali*ali88@r-bp1306pziyedvx6qyipd.redis.rds.aliyuncs.com:6379/0
+    #    we should not provide password here, should use secret and env parameter, this db is only for demo
+
+
+service:
+  outbox:
+    enabled: false
+  lock:
+    timeout: 10s
+
+kafka:
+  k-topics:
+    commands-transaction-pending:
+      partitions: 16
+      replicas: 1
+    events-transaction-processed:
+      partitions: 16
+      replicas: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: always
+      show-details: always
+
+logging:
+  level:
+    org:
+      apache:
+        kafka:
+          clients:
+            # Avoid unnecessary noice from Kafka client.
+            NetworkClient: WARN
+      hibernate:
+        engine:
+          jdbc:
+            spi: WARN
+      #        SQL: DEBUG
+      #        type:
+      #          descriptor:
+      #            sql:
+      #              BasicBinder: TRACE
+      springframework:
+        retry:
+          support: INFO
+#
+#  logging.level.org.hibernate.SQL=DEBUG
+#  logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
