@@ -15,9 +15,9 @@ spring:
   application:
     name: account-balance
   datasource:
-    url: jdbc:postgresql://pgm-bp1w84ki377iilkdoo.pg.rds.aliyuncs.com:5432/balance?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true
-    username: hsbc
-    password: PG@ali123
+    url: jdbc:postgresql://${SECRET_DB_HOST}:5432/balance?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true
+    username: ${SECRET_DB_USERNAME}
+    password: ${SECRET_DB_PASSWORD}
     #    we should not provide password here, should use secret and env parameter, this db is only for demo
     hikari:
       connection-timeout: 2000
@@ -35,7 +35,7 @@ spring:
         concurrency-limit: 8
   data:
     redis:
-      url: redis://:ali*ali88@r-bp1306pziyedvx6qyipd.redis.rds.aliyuncs.com:6379/0
+      url: redis://:${SECRET_REDIS_PASSWORD}@${SECRET_REDIS_HOST}:6379/0
       #    we should not provide password here, should use secret and env parameter, this db is only for demo
 
 service:
