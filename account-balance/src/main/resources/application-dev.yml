@@ -48,8 +48,6 @@ spring:
 
 
 service:
-  outbox:
-    enabled: false
   lock:
     timeout: 10s
 

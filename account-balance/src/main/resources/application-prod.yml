@@ -33,11 +33,14 @@ spring:
         size: 4
       simple:
         concurrency-limit: 8
-
   data:
     redis:
       url: redis://:ali*ali88@r-bp1306pziyedvx6qyipd.redis.rds.aliyuncs.com:6379/0
       #    we should not provide password here, should use secret and env parameter, this db is only for demo
+
+service:
+  lock:
+    timeout: 10s
 
 logging:
   level:
