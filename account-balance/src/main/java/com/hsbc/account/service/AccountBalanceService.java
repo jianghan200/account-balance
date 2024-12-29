@@ -64,8 +64,8 @@ public class AccountBalanceService {
 
     @Cacheable(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    public AccountBalance queryAccountBalance(String accountId) {
-        AccountBalance accountBalance = accountBalanceRepo.findById(Long.parseLong(accountId)).orElseThrow(() ->
+    public AccountBalance queryAccountBalance(Long accountId) {
+        AccountBalance accountBalance = accountBalanceRepo.findById(accountId).orElseThrow(() ->
                 new EntityNotFoundException("Can't find account " + accountId));
         return accountBalance;
     }

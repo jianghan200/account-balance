@@ -27,7 +27,7 @@ public class AccountController {
      * @return
      */
     @GetMapping("/account/{id}")
-    public AccountBalance queryAccountBalance(@PathVariable String id) {
+    public AccountBalance queryAccountBalance(@PathVariable Long id) {
         return accountService.queryAccountBalance(id);
     }
 
