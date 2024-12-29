@@ -1,0 +1,379 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <title>Coverage Report > AccountBalanceService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/highlight-idea.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.pack.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.hsbc.account.service</a>
+</div>
+
+<h1>Coverage Summary for Class: AccountBalanceService (com.hsbc.account.service)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">AccountBalanceService</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (14/14)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    81.3%
+  </span>
+  <span class="absValue">
+    (61/75)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">AccountBalanceService$$EnhancerBySpringCGLIB$$f42901a5</td>
+  </tr>
+  <tr>
+    <td class="name">AccountBalanceService$$EnhancerBySpringCGLIB$$f42901a5$$FastClassBySpringCGLIB$$baf963cc</td>
+  </tr>
+  <tr>
+    <td class="name">AccountBalanceService$$FastClassBySpringCGLIB$$86488dd7</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (14/14)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    81.3%
+  </span>
+  <span class="absValue">
+    (61/75)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<div class="sourceCode" id="sourceCode"><i class="no-highlight">1</i>&nbsp;package com.hsbc.account.service;
+<i class="no-highlight">2</i>&nbsp;
+<i class="no-highlight">3</i>&nbsp;import com.hsbc.account.config.RedisConfig;
+<i class="no-highlight">4</i>&nbsp;import com.hsbc.account.repo.Transfer;
+<i class="no-highlight">5</i>&nbsp;import com.hsbc.account.repo.*;
+<i class="no-highlight">6</i>&nbsp;import lombok.extern.slf4j.Slf4j;
+<i class="no-highlight">7</i>&nbsp;import org.springframework.beans.factory.annotation.Value;
+<i class="no-highlight">8</i>&nbsp;import org.springframework.cache.annotation.CacheEvict;
+<i class="no-highlight">9</i>&nbsp;import org.springframework.cache.annotation.Cacheable;
+<i class="no-highlight">10</i>&nbsp;import org.springframework.cache.annotation.Caching;
+<i class="no-highlight">11</i>&nbsp;import org.springframework.context.ApplicationEventPublisher;
+<i class="no-highlight">12</i>&nbsp;import org.springframework.dao.TransientDataAccessException;
+<i class="no-highlight">13</i>&nbsp;import org.springframework.data.jpa.repository.Lock;
+<i class="no-highlight">14</i>&nbsp;import org.springframework.data.redis.core.RedisOperations;
+<i class="no-highlight">15</i>&nbsp;import org.springframework.jdbc.core.JdbcTemplate;
+<i class="no-highlight">16</i>&nbsp;import org.springframework.jdbc.datasource.DataSourceUtils;
+<i class="no-highlight">17</i>&nbsp;import org.springframework.retry.annotation.Retryable;
+<i class="no-highlight">18</i>&nbsp;import org.springframework.stereotype.Service;
+<i class="no-highlight">19</i>&nbsp;import org.springframework.transaction.TransactionException;
+<i class="no-highlight">20</i>&nbsp;import org.springframework.transaction.annotation.Isolation;
+<i class="no-highlight">21</i>&nbsp;import org.springframework.transaction.annotation.Transactional;
+<i class="no-highlight">22</i>&nbsp;import org.springframework.validation.annotation.Validated;
+<i class="no-highlight">23</i>&nbsp;
+<i class="no-highlight">24</i>&nbsp;import javax.persistence.EntityNotFoundException;
+<i class="no-highlight">25</i>&nbsp;import javax.persistence.LockModeType;
+<i class="no-highlight">26</i>&nbsp;import javax.persistence.PersistenceException;
+<i class="no-highlight">27</i>&nbsp;import javax.sql.DataSource;
+<i class="no-highlight">28</i>&nbsp;import java.sql.Connection;
+<i class="no-highlight">29</i>&nbsp;import java.sql.SQLException;
+<i class="no-highlight">30</i>&nbsp;import java.sql.Statement;
+<i class="no-highlight">31</i>&nbsp;import java.time.Duration;
+<i class="no-highlight">32</i>&nbsp;import java.util.*;
+<i class="no-highlight">33</i>&nbsp;import java.util.concurrent.ConcurrentHashMap;
+<i class="no-highlight">34</i>&nbsp;
+<i class="no-highlight">35</i>&nbsp;@Service
+<i class="no-highlight">36</i>&nbsp;@Validated
+<b class="fc"><i class="no-highlight">37</i>&nbsp;@Slf4j</b>
+<i class="no-highlight">38</i>&nbsp;public class AccountBalanceService {
+<i class="no-highlight">39</i>&nbsp;
+<i class="no-highlight">40</i>&nbsp;
+<i class="no-highlight">41</i>&nbsp;    private final AccountBalanceRepo accountBalanceRepo;
+<i class="no-highlight">42</i>&nbsp;    private final TransferLogRepo transferLogRepo;
+<i class="no-highlight">43</i>&nbsp;    private final RedisOperations&lt;String, String&gt; redisOperations;
+<i class="no-highlight">44</i>&nbsp;    private final ApplicationEventPublisher eventPublisher;
+<i class="no-highlight">45</i>&nbsp;    private final Duration lockTimeout;
+<i class="no-highlight">46</i>&nbsp;
+<b class="fc"><i class="no-highlight">47</i>&nbsp;    private final ConcurrentHashMap&lt;Long, Long&gt; inMemoryBalances = new ConcurrentHashMap&lt;&gt;();</b>
+<i class="no-highlight">48</i>&nbsp;
+<i class="no-highlight">49</i>&nbsp;    private JdbcTemplate jdbcTemplate;
+<i class="no-highlight">50</i>&nbsp;
+<i class="no-highlight">51</i>&nbsp;    public AccountBalanceService(AccountBalanceRepo balanceRepo, TransferLogRepo transactionLogRepo,
+<i class="no-highlight">52</i>&nbsp;                                 RedisOperations&lt;String, String&gt; redisOperations,
+<i class="no-highlight">53</i>&nbsp;                                 ApplicationEventPublisher eventPublisher,
+<i class="no-highlight">54</i>&nbsp;                                 JdbcTemplate jdbcTemplate,
+<b class="fc"><i class="no-highlight">55</i>&nbsp;                                 @Value(&quot;${service.lock.timeout}&quot;) Duration lockTimeout) {</b>
+<b class="fc"><i class="no-highlight">56</i>&nbsp;        this.accountBalanceRepo = balanceRepo;</b>
+<b class="fc"><i class="no-highlight">57</i>&nbsp;        this.transferLogRepo = transactionLogRepo;</b>
+<b class="fc"><i class="no-highlight">58</i>&nbsp;        this.redisOperations = redisOperations;</b>
+<b class="fc"><i class="no-highlight">59</i>&nbsp;        this.eventPublisher = eventPublisher;</b>
+<b class="fc"><i class="no-highlight">60</i>&nbsp;        this.lockTimeout = lockTimeout;</b>
+<b class="fc"><i class="no-highlight">61</i>&nbsp;        this.jdbcTemplate = jdbcTemplate;</b>
+<i class="no-highlight">62</i>&nbsp;    }
+<i class="no-highlight">63</i>&nbsp;
+<i class="no-highlight">64</i>&nbsp;
+<i class="no-highlight">65</i>&nbsp;    @Cacheable(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">66</i>&nbsp;    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
+<i class="no-highlight">67</i>&nbsp;    public AccountBalance queryAccountBalance(Long accountId) {
+<b class="fc"><i class="no-highlight">68</i>&nbsp;        AccountBalance accountBalance = accountBalanceRepo.findById(accountId).orElseThrow(() -&gt;</b>
+<b class="fc"><i class="no-highlight">69</i>&nbsp;                new EntityNotFoundException(&quot;Can&#39;t find account &quot; + accountId));</b>
+<b class="fc"><i class="no-highlight">70</i>&nbsp;        return accountBalance;</b>
+<i class="no-highlight">71</i>&nbsp;    }
+<i class="no-highlight">72</i>&nbsp;
+<i class="no-highlight">73</i>&nbsp;
+<i class="no-highlight">74</i>&nbsp;    /**
+<i class="no-highlight">75</i>&nbsp;     * 我们这里假设的是一个高并发的余额更新场景，这里实现的为悲观锁机制，在高并发更新的场景下不适合使用乐观锁，反而会增加数据库负担
+<i class="no-highlight">76</i>&nbsp;     * 可以通过维护用户是否是高频更新用户来决定是否使用悲观锁
+<i class="no-highlight">77</i>&nbsp;     * 此函数执行扣减动作，如为收款，amount 为负数
+<i class="no-highlight">78</i>&nbsp;     * @param transactionId
+<i class="no-highlight">79</i>&nbsp;     * @param userId
+<i class="no-highlight">80</i>&nbsp;     * @param amount
+<i class="no-highlight">81</i>&nbsp;     * @param isPay
+<i class="no-highlight">82</i>&nbsp;     * @return
+<i class="no-highlight">83</i>&nbsp;     */
+<i class="no-highlight">84</i>&nbsp;//    @Caching(evict = {
+<i class="no-highlight">85</i>&nbsp;//            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">86</i>&nbsp;//    })
+<i class="no-highlight">87</i>&nbsp;//    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">88</i>&nbsp;//    @CacheEvict 标注
+<i class="no-highlight">89</i>&nbsp;    @Retryable
+<i class="no-highlight">90</i>&nbsp;    @Transactional(rollbackFor = Exception.class)
+<i class="no-highlight">91</i>&nbsp;    public UpdateBalanceStatus updateBalancePessimistic(String transactionId, Long accountId, Long amount, boolean isPay) {
+<i class="no-highlight">92</i>&nbsp;        // 获取DataSource
+<b class="fc"><i class="no-highlight">93</i>&nbsp;        DataSource dataSource = jdbcTemplate.getDataSource();</b>
+<i class="no-highlight">94</i>&nbsp;
+<i class="no-highlight">95</i>&nbsp;        // 获取Connection
+<b class="fc"><i class="no-highlight">96</i>&nbsp;        try (Connection connection = DataSourceUtils.getConnection(dataSource)) {</b>
+<i class="no-highlight">97</i>&nbsp;            // 创建Statement
+<b class="fc"><i class="no-highlight">98</i>&nbsp;            Statement statement = connection.createStatement();</b>
+<b class="fc"><i class="no-highlight">99</i>&nbsp;            String status = isPay?&quot;Paid&quot;:&quot;Received&quot;;</b>
+<i class="no-highlight">100</i>&nbsp;            // 悲观锁 + 批量执行（减少一次与 MySQL 的交互）, 扣款的时候需要检测余额是否充足
+<b class="fc"><i class="no-highlight">101</i>&nbsp;            String sql = new StringBuilder(&quot;SELECT * FROM account_balance WHERE account_id = &quot;).append(accountId).append(&quot; FOR UPDATE ;\n&quot;)</b>
+<b class="fc"><i class="no-highlight">102</i>&nbsp;                    .append(&quot;UPDATE account_balance SET balance = balance - &quot;).append(amount).append(&quot; WHERE account_id = &quot; )</b>
+<b class="fc"><i class="no-highlight">103</i>&nbsp;                    .append(accountId).append(&quot; and balance &gt; &quot;).append(amount).append(&quot;;&quot;)</b>
+<b class="fc"><i class="no-highlight">104</i>&nbsp;                    .toString();</b>
+<i class="no-highlight">105</i>&nbsp;            // 这里也可以再增加一个支付状态的更新，从而处理极端情况
+<i class="no-highlight">106</i>&nbsp;            // 执行SQL
+<b class="fc"><i class="no-highlight">107</i>&nbsp;            boolean result = statement.execute(sql);</b>
+<i class="no-highlight">108</i>&nbsp;
+<i class="no-highlight">109</i>&nbsp;            // 第一个 result 表示 select 语句的结果，期望为 true
+<b class="fc"><i class="no-highlight">110</i>&nbsp;            if (result) {</b>
+<b class="fc"><i class="no-highlight">111</i>&nbsp;                result = statement.getMoreResults();</b>
+<i class="no-highlight">112</i>&nbsp;                // 第二个 result 表示 update 语句的结果，期望为 false
+<b class="fc"><i class="no-highlight">113</i>&nbsp;                if(!result){</b>
+<i class="no-highlight">114</i>&nbsp;                    // 获取更新计数，成功更新一行
+<b class="fc"><i class="no-highlight">115</i>&nbsp;                    int updatedCount = statement.getUpdateCount();</b>
+<b class="fc"><i class="no-highlight">116</i>&nbsp;                    if(updatedCount == 1){</b>
+<i class="no-highlight">117</i>&nbsp;//                        log.info(&quot;transactionId &quot; + transactionId + status);
+<b class="fc"><i class="no-highlight">118</i>&nbsp;                        return UpdateBalanceStatus.SUCCEED;</b>
+<b class="fc"><i class="no-highlight">119</i>&nbsp;                    } else if(updatedCount == 0){</b>
+<b class="fc"><i class="no-highlight">120</i>&nbsp;                        return UpdateBalanceStatus.INSUFFICIENT_FUNDS;</b>
+<i class="no-highlight">121</i>&nbsp;                    }
+<i class="no-highlight">122</i>&nbsp;                }
+<i class="no-highlight">123</i>&nbsp;            }
+<i class="no-highlight">124</i>&nbsp;            // 清理资源
+<b class="nc"><i class="no-highlight">125</i>&nbsp;            statement.close();</b>
+<b class="nc"><i class="no-highlight">126</i>&nbsp;            return UpdateBalanceStatus.FAILED;</b>
+<b class="fc"><i class="no-highlight">127</i>&nbsp;        } catch (Exception e) {</b>
+<b class="nc"><i class="no-highlight">128</i>&nbsp;            if(e instanceof SQLException){</b>
+<i class="no-highlight">129</i>&nbsp;                // 异常处理
+<b class="nc"><i class="no-highlight">130</i>&nbsp;                e.printStackTrace();</b>
+<b class="nc"><i class="no-highlight">131</i>&nbsp;                return UpdateBalanceStatus.FAILED;</b>
+<i class="no-highlight">132</i>&nbsp;            }
+<i class="no-highlight">133</i>&nbsp;        }
+<b class="nc"><i class="no-highlight">134</i>&nbsp;        return UpdateBalanceStatus.FAILED;</b>
+<i class="no-highlight">135</i>&nbsp;    }
+<i class="no-highlight">136</i>&nbsp;
+<i class="no-highlight">137</i>&nbsp;    /**
+<i class="no-highlight">138</i>&nbsp;     * 处理转账逻辑
+<i class="no-highlight">139</i>&nbsp;     * @param transfer
+<i class="no-highlight">140</i>&nbsp;     */
+<i class="no-highlight">141</i>&nbsp;    @Caching(evict = {
+<i class="no-highlight">142</i>&nbsp;            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#transfer.fromAccountId&quot;),
+<i class="no-highlight">143</i>&nbsp;            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#transfer.toAccountId&quot;)
+<i class="no-highlight">144</i>&nbsp;    })
+<i class="no-highlight">145</i>&nbsp;    public TransferStatus persistAndExecute(Transfer transfer) {
+<b class="fc"><i class="no-highlight">146</i>&nbsp;        String transactionId = transfer.getTransactionId();</b>
+<i class="no-highlight">147</i>&nbsp;        try {
+<b class="fc"><i class="no-highlight">148</i>&nbsp;            transfer.setCreate_time(null);</b>
+<i class="no-highlight">149</i>&nbsp;            // 交易记录，这里保证了交易不会被重复处理
+<b class="fc"><i class="no-highlight">150</i>&nbsp;            transferLogRepo.save(transfer);</b>
+<i class="no-highlight">151</i>&nbsp;
+<i class="no-highlight">152</i>&nbsp;            // 转账和收款分开，在分布式场景下可以更好扩展，可以使用 hash 将统一用户的余额更新的请求通过消息队列分发到特定的机器上
+<i class="no-highlight">153</i>&nbsp;            // 这里，我们扣减成功了才执行加余额，如果出现了减少余额却没有增加余额，可以将消息更新
+<i class="no-highlight">154</i>&nbsp;            // 如果是低频更新账户，可以区别对待采用乐观锁，我们这里只实现高频账户更新的悲观锁
+<b class="fc"><i class="no-highlight">155</i>&nbsp;            UpdateBalanceStatus status = updateBalancePessimistic(transfer.getTransactionId(), transfer.getFromAccountId(), transfer.getAmount(), true);</b>
+<b class="fc"><i class="no-highlight">156</i>&nbsp;            if(status == UpdateBalanceStatus.SUCCEED){</b>
+<i class="no-highlight">157</i>&nbsp;                // 通过消息队列发一个付款处理成功的消息
+<i class="no-highlight">158</i>&nbsp;                // 扣钱失败就不用转钱了
+<b class="fc"><i class="no-highlight">159</i>&nbsp;                status = updateBalancePessimistic(transfer.getTransactionId(), transfer.getToAccountId(), -transfer.getAmount(), false);</b>
+<b class="fc"><i class="no-highlight">160</i>&nbsp;                if(status == UpdateBalanceStatus.SUCCEED) {</b>
+<i class="no-highlight">161</i>&nbsp;                    // 通过消息队列发一个收款处理成功的消息
+<i class="no-highlight">162</i>&nbsp;                }
+<b class="fc"><i class="no-highlight">163</i>&nbsp;                return TransferStatus.COMPLETED;</b>
+<b class="fc"><i class="no-highlight">164</i>&nbsp;            }else if( status == UpdateBalanceStatus.INSUFFICIENT_FUNDS){</b>
+<b class="fc"><i class="no-highlight">165</i>&nbsp;                return TransferStatus.INSUFFICIENT_FUNDS;</b>
+<i class="no-highlight">166</i>&nbsp;            }
+<i class="no-highlight">167</i>&nbsp;            // 扣减失败，更新数据库, 或加入异步任务
+<b class="nc"><i class="no-highlight">168</i>&nbsp;            return TransferStatus.FAILED;</b>
+<b class="nc"><i class="no-highlight">169</i>&nbsp;        } catch (PersistenceException ex) {</b>
+<b class="nc"><i class="no-highlight">170</i>&nbsp;            String message = ex.getMessage() != null ? ex.getMessage() : &quot;&quot;;</b>
+<i class="no-highlight">171</i>&nbsp;            // 将处理失败消息异步发送出去
+<b class="nc"><i class="no-highlight">172</i>&nbsp;            transfer.setStatus(TransferStatus.FAILED.name());</b>
+<b class="nc"><i class="no-highlight">173</i>&nbsp;            transferLogRepo.save(transfer);</b>
+<i class="no-highlight">174</i>&nbsp;//            eventPublisher.publishEvent(transfer);
+<b class="nc"><i class="no-highlight">175</i>&nbsp;            throw ex;</b>
+<i class="no-highlight">176</i>&nbsp;        }
+<i class="no-highlight">177</i>&nbsp;    }
+<i class="no-highlight">178</i>&nbsp;
+<i class="no-highlight">179</i>&nbsp;
+<i class="no-highlight">180</i>&nbsp;    /**
+<i class="no-highlight">181</i>&nbsp;     * 用乐观锁的方式实现余额更新
+<i class="no-highlight">182</i>&nbsp;     * @param amount
+<i class="no-highlight">183</i>&nbsp;     */
+<i class="no-highlight">184</i>&nbsp;    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountBalance.accountId&quot;)
+<i class="no-highlight">185</i>&nbsp;    @Lock(LockModeType.OPTIMISTIC)
+<i class="no-highlight">186</i>&nbsp;    @Retryable(include = {TransientDataAccessException.class, TransactionException.class})
+<i class="no-highlight">187</i>&nbsp;    @Transactional(isolation = Isolation.REPEATABLE_READ)
+<i class="no-highlight">188</i>&nbsp;    public void updateBalanceOptimistic(AccountBalance accountBalance, Long amount) {
+<b class="fc"><i class="no-highlight">189</i>&nbsp;        accountBalance.setBalance(accountBalance.getBalance() - amount);</b>
+<b class="fc"><i class="no-highlight">190</i>&nbsp;        accountBalanceRepo.save(accountBalance);</b>
+<i class="no-highlight">191</i>&nbsp;    }
+<i class="no-highlight">192</i>&nbsp;
+<i class="no-highlight">193</i>&nbsp;
+<i class="no-highlight">194</i>&nbsp;    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">195</i>&nbsp;    @Lock(LockModeType.OPTIMISTIC)
+<i class="no-highlight">196</i>&nbsp;    @Transactional(isolation = Isolation.REPEATABLE_READ)
+<i class="no-highlight">197</i>&nbsp;    public AccountBalance withdrawAccount(Long accountId, Long amount, UUID requestId) {
+<b class="fc"><i class="no-highlight">198</i>&nbsp;        return processWithLock(&quot;request-lock:&quot; + requestId, () -&gt; {</b>
+<b class="fc"><i class="no-highlight">199</i>&nbsp;            AccountBalance accountBalance = accountBalanceRepo.findById(accountId)</b>
+<b class="fc"><i class="no-highlight">200</i>&nbsp;                    .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Can&#39;t find account &quot; + accountId));</b>
+<b class="fc"><i class="no-highlight">201</i>&nbsp;            accountBalance.setBalance(accountBalance.getBalance() - amount);</b>
+<b class="fc"><i class="no-highlight">202</i>&nbsp;            return accountBalanceRepo.save(accountBalance);</b>
+<i class="no-highlight">203</i>&nbsp;        });
+<i class="no-highlight">204</i>&nbsp;    }
+<i class="no-highlight">205</i>&nbsp;
+<i class="no-highlight">206</i>&nbsp;
+<i class="no-highlight">207</i>&nbsp;    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">208</i>&nbsp;    @Lock(LockModeType.OPTIMISTIC)
+<i class="no-highlight">209</i>&nbsp;    @Transactional(isolation = Isolation.REPEATABLE_READ)
+<i class="no-highlight">210</i>&nbsp;    public AccountBalance depositAccount(Long accountId, Long amount, UUID requestId) {
+<b class="fc"><i class="no-highlight">211</i>&nbsp;        return processWithLock(&quot;request-lock:&quot; + requestId, () -&gt; {</b>
+<b class="fc"><i class="no-highlight">212</i>&nbsp;            AccountBalance accountBalance = accountBalanceRepo.findById(accountId)</b>
+<b class="fc"><i class="no-highlight">213</i>&nbsp;                    .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Can&#39;t find account &quot; + accountId));</b>
+<b class="fc"><i class="no-highlight">214</i>&nbsp;            accountBalance.setBalance(accountBalance.getBalance() + amount);</b>
+<b class="fc"><i class="no-highlight">215</i>&nbsp;            return accountBalanceRepo.save(accountBalance);</b>
+<i class="no-highlight">216</i>&nbsp;        });
+<i class="no-highlight">217</i>&nbsp;    }
+<i class="no-highlight">218</i>&nbsp;
+<i class="no-highlight">219</i>&nbsp;
+<i class="no-highlight">220</i>&nbsp;    /** This is to set the account balance
+<i class="no-highlight">221</i>&nbsp;     * for Integration test purpose
+<i class="no-highlight">222</i>&nbsp;     * @param accountId
+<i class="no-highlight">223</i>&nbsp;     * @param balance
+<i class="no-highlight">224</i>&nbsp;     * @param requestId
+<i class="no-highlight">225</i>&nbsp;     * @return
+<i class="no-highlight">226</i>&nbsp;     */
+<i class="no-highlight">227</i>&nbsp;    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = &quot;#accountId&quot;)
+<i class="no-highlight">228</i>&nbsp;    @Lock(LockModeType.OPTIMISTIC)
+<i class="no-highlight">229</i>&nbsp;    @Transactional(isolation = Isolation.REPEATABLE_READ)
+<i class="no-highlight">230</i>&nbsp;    public AccountBalance setAccountBalance(Long accountId, Long balance, UUID requestId) {
+<b class="fc"><i class="no-highlight">231</i>&nbsp;        return processWithLock(&quot;request-lock:&quot; + requestId, () -&gt; {</b>
+<b class="fc"><i class="no-highlight">232</i>&nbsp;            AccountBalance accountBalance = accountBalanceRepo.findById(accountId)</b>
+<b class="fc"><i class="no-highlight">233</i>&nbsp;                    .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Can&#39;t find account &quot; + accountId));</b>
+<b class="fc"><i class="no-highlight">234</i>&nbsp;            accountBalance.setBalance(balance);</b>
+<b class="fc"><i class="no-highlight">235</i>&nbsp;            return accountBalanceRepo.save(accountBalance);</b>
+<i class="no-highlight">236</i>&nbsp;        });
+<i class="no-highlight">237</i>&nbsp;    }
+<i class="no-highlight">238</i>&nbsp;
+<i class="no-highlight">239</i>&nbsp;    /**
+<i class="no-highlight">240</i>&nbsp;     * 使用 Redis 实现分布式锁
+<i class="no-highlight">241</i>&nbsp;     * @param lockKey
+<i class="no-highlight">242</i>&nbsp;     * @param action
+<i class="no-highlight">243</i>&nbsp;     * @return
+<i class="no-highlight">244</i>&nbsp;     * @param &lt;T&gt;
+<i class="no-highlight">245</i>&nbsp;     */
+<i class="no-highlight">246</i>&nbsp;    private &lt;T&gt; T processWithLock(String lockKey, java.util.function.Supplier&lt;T&gt; action) {
+<b class="fc"><i class="no-highlight">247</i>&nbsp;        boolean isLocked = redisOperations.opsForValue().setIfAbsent(lockKey, &quot;locked&quot;, lockTimeout);</b>
+<b class="fc"><i class="no-highlight">248</i>&nbsp;        if (isLocked) {</b>
+<i class="no-highlight">249</i>&nbsp;            try {
+<b class="fc"><i class="no-highlight">250</i>&nbsp;                return action.get();</b>
+<i class="no-highlight">251</i>&nbsp;            } finally {
+<b class="fc"><i class="no-highlight">252</i>&nbsp;                redisOperations.opsForValue().getAndDelete(lockKey);</b>
+<b class="nc"><i class="no-highlight">253</i>&nbsp;            }</b>
+<i class="no-highlight">254</i>&nbsp;        } else {
+<b class="nc"><i class="no-highlight">255</i>&nbsp;            throw new ConcurrentModificationException(&quot;LockKey &quot; + lockKey + &quot; is already being processed&quot;);</b>
+<i class="no-highlight">256</i>&nbsp;        }
+<i class="no-highlight">257</i>&nbsp;    }
+<i class="no-highlight">258</i>&nbsp;}
+</div>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+        var codeBlock = document.getElementById('sourceCode');
+
+        if (codeBlock) {
+            hljs.highlightBlock(codeBlock);
+        }
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2024-12-29 22:35</div>
+</div>
+</body>
+</html>
