@@ -21,12 +21,6 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    @GetMapping("/hello")
-    public ResponseEntity<String> hello() {
-        return ResponseEntity.ok("Hi");
-    }
-
-
     /**
      * 查询用户余额
      * @param id 账户 ID

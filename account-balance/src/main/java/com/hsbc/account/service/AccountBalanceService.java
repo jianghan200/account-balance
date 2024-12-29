@@ -1,11 +1,9 @@
 package com.hsbc.account.service;
 
-
 import com.hsbc.account.config.RedisConfig;
 import com.hsbc.account.repo.Transfer;
 import com.hsbc.account.repo.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -48,7 +46,6 @@ public class AccountBalanceService {
 
     private final ConcurrentHashMap<Long, Long> inMemoryBalances = new ConcurrentHashMap<>();
 
-//    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     public AccountBalanceService(AccountBalanceRepo balanceRepo, TransferLogRepo transactionLogRepo,
