@@ -49,7 +49,7 @@ public class AccountController {
 
         if(status == TransferStatus.COMPLETED){
             return ResponseEntity.status(HttpStatus.OK).body("Transaction " + transfer.getTransactionId() +" processed successfully");
-        }else if(status == TransferStatus.NO_ENOUGH_MONEY){
+        }else if(status == TransferStatus.NOT_ENOUGH_MONEY){
             return ResponseEntity.status(HttpStatus.OK).body("Account balance not enough");
         }else {
             return ResponseEntity.status(HttpStatus.OK).body("Failed to process");

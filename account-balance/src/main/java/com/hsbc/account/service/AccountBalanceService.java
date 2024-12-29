@@ -118,7 +118,7 @@ public class AccountBalanceService {
                         log.info("transactionId " + transactionId + (isPay?" Paid":" Received"));
                         return UpdateBalanceStatus.SUCCEED;
                     } else if(statement.getUpdateCount() == 0){
-                        return UpdateBalanceStatus.NO_ENOUGH_MONEY;
+                        return UpdateBalanceStatus.NOT_ENOUGH_MONEY;
                     }
                 }
             }
@@ -154,8 +154,8 @@ public class AccountBalanceService {
                 // 扣钱失败就不用转钱了
                 updateBalancePessimistic(transfer.getTransactionId(), transfer.getToAccountId(), -transfer.getAmount(), false);
                 return TransferStatus.COMPLETED;
-            }else if( status == UpdateBalanceStatus.NO_ENOUGH_MONEY ){
-                return TransferStatus.NO_ENOUGH_MONEY;
+            }else if( status == UpdateBalanceStatus.NOT_ENOUGH_MONEY){
+                return TransferStatus.NOT_ENOUGH_MONEY;
             }
             // 扣减失败，更新数据库, 或加入异步任务
             return TransferStatus.FAILED;
