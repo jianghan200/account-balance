@@ -2,7 +2,7 @@ package com.hsbc.account.repo;
 
 public enum TransferStatus {
     PENDING,
-    NOT_ENOUGH_MONEY,
+    INSUFFICIENT_FUNDS,
     PAID,
     COMPLETED, // Paid and Received
     FAILED,
