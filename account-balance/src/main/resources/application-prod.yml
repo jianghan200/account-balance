@@ -2,7 +2,7 @@ endpoint:
   accountBalanceService: http://account-balance:8082
 
 server:
-  port: 8080
+  port: 8082
   tomcat:
     threads:
       # The default value 200 is too high which would slow down the application.
