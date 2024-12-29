@@ -10,29 +10,10 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import java.time.Instant;
 
-
-//扩展成 一个账户减少余额，一个账户加余额两个事件，分开处理
-// 根据账户 ID 镜像 hash，交给不同机器处理
-//先执行扣减，扣减成功后发送增加余额事件
-
-//
-//CREATE TABLE IF NOT EXISTS transaction_log
-//        (
-//        id             varchar(64) PRIMARY KEY,
-//        from_account_id bigint        NOT NULL,
-//        to_account_id   bigint        NOT NULL,
-//        amount          bigint        NOT NULL,
-//        status         varchar(16)   NOT NULL,
-//        create_time    timestamp     NOT NULL DEFAULT now(),
-//        update_time    timestamp     NOT NULL DEFAULT now(),
-//        version        integer       NOT NULL DEFAULT 0
-//        );
-
 @Data
 @ToString
 @Entity
 @NoArgsConstructor
-@AllArgsConstructor
 @Table(name = "transfer_log")
 public class Transfer {
 
@@ -52,6 +33,5 @@ public class Transfer {
         this.toAccountId = toAccountId;
         this.amount = amount;
     }
-
 
 }

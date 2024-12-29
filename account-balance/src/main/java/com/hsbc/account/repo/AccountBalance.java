@@ -22,10 +22,17 @@ public class AccountBalance implements Serializable {
      * 正式系统中这里应该有更多的字段， account_name, currency_code, status, update_time, create_time 等等，
      * 这里仅做研究账户余额更新，没有加
      */
-
     public AccountBalance(Long accountId, Long balance, int version) {
         this.accountId = accountId;
         this.balance = balance;
         this.version = version;
+    }
+
+    public AccountBalance copy() {
+        AccountBalance accountBalance = new AccountBalance();
+        accountBalance.accountId = this.getAccountId();
+        accountBalance.balance =   this.getBalance();
+        accountBalance.version =   this.getVersion();
+        return accountBalance;
     }
 }

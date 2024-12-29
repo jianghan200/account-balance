@@ -65,7 +65,7 @@ public class AccountBalanceService {
     }
 
 
-//    @Cacheable(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
+    @Cacheable(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public AccountBalance queryAccountBalance(String accountId) {
         AccountBalance accountBalance = accountBalanceRepo.findById(Long.parseLong(accountId)).orElseThrow(() ->
@@ -139,6 +139,10 @@ public class AccountBalanceService {
      * 处理转账逻辑
      * @param transfer
      */
+    @Caching(evict = {
+            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#transfer.fromAccountId"),
+            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#transfer.toAccountId")
+    })
     public TransferStatus persistAndExecute(Transfer transfer) {
         String transactionId = transfer.getTransactionId();
         try {
@@ -174,9 +178,7 @@ public class AccountBalanceService {
      * 用乐观锁的方式实现余额更新
      * @param amount
      */
-    @Caching(evict = {
-            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#userId")
-    })
+    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountBalance.accountId")
     @Lock(LockModeType.OPTIMISTIC)
     @Retryable(include = {TransientDataAccessException.class, TransactionException.class})
     @Transactional(isolation = Isolation.REPEATABLE_READ)
@@ -185,6 +187,8 @@ public class AccountBalanceService {
         accountBalanceRepo.save(accountBalance);
     }
 
+
+    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
     @Lock(LockModeType.OPTIMISTIC)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public AccountBalance withdrawAccount(Long accountId, Long amount, UUID requestId) {
@@ -196,6 +200,8 @@ public class AccountBalanceService {
         });
     }
 
+
+    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
     @Lock(LockModeType.OPTIMISTIC)
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public AccountBalance depositAccount(Long accountId, Long amount, UUID requestId) {
@@ -203,6 +209,26 @@ public class AccountBalanceService {
             AccountBalance accountBalance = accountBalanceRepo.findById(accountId)
                     .orElseThrow(() -> new EntityNotFoundException("Can't find account " + accountId));
             accountBalance.setBalance(accountBalance.getBalance() + amount);
+            return accountBalanceRepo.save(accountBalance);
+        });
+    }
+
+
+    /** This is to set the account balance
+     * for Integration test purpose
+     * @param accountId
+     * @param balance
+     * @param requestId
+     * @return
+     */
+    @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#accountId")
+    @Lock(LockModeType.OPTIMISTIC)
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public AccountBalance setAccountBalance(Long accountId, Long balance, UUID requestId) {
+        return processWithLock("request-lock:" + requestId, () -> {
+            AccountBalance accountBalance = accountBalanceRepo.findById(accountId)
+                    .orElseThrow(() -> new EntityNotFoundException("Can't find account " + accountId));
+            accountBalance.setBalance(balance);
             return accountBalanceRepo.save(accountBalance);
         });
     }
@@ -226,8 +252,4 @@ public class AccountBalanceService {
             throw new ConcurrentModificationException("LockKey " + lockKey + " is already being processed");
         }
     }
-
-
-
-
 }
