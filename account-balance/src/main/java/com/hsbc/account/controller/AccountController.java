@@ -28,7 +28,7 @@ public class AccountController {
 
 
     /**
-     * 查询了用户余额
+     * 查询用户余额
      * @param id 账户 ID
      * @return
      */
