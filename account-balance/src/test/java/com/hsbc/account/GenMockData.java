@@ -17,7 +17,7 @@ public class GenMockData {
     // 执行这个函数，插入 101个新账户，每个账户 10000 分（100 元）
     // @Test
     public void insertAccountBalanceRecords() {
-        String sql = "INSERT INTO account_balance (user_id, balance, version) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO account_balance (account_id, balance, version) VALUES (?, ?, ?)";
 
         for (int i = 1; i <= 101; i++) {
             int userId = i;
