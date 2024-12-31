@@ -1,5 +1,6 @@
 endpoint:
-  accountBalanceService: http://account-balance:8082
+  transaction: http://transaction:8081
+  account-balance: http://account-balance:8082
 
 server:
   port: 8082

@@ -1,6 +1,6 @@
 package com.hsbc.account.repo;
 
-import lombok.AllArgsConstructor;
+import com.hsbc.commonlib.bean.TransferStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;

@@ -21,6 +21,7 @@
     <modules>
         <module>common-lib</module>
         <module>account-balance</module>
+        <module>transaction-service</module>
     </modules>
 
     <dependencies>

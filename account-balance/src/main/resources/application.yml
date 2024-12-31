@@ -4,4 +4,4 @@ spring:
   profiles:
     active: dev
 serviceName:
-  account: "account-balance"
+  account-balance: "account-balance"

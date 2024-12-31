@@ -1,5 +1,7 @@
 endpoint:
-  accountBalanceService: http://localhost:8082
+  transaction: http://localhost:8081
+  account-balance: http://localhost:8082
+
 
 server:
   port: 8082
@@ -19,7 +21,6 @@ spring:
     username: hsbc
     password: PG@ali123
 #    we should not provide password here, should use secret and env parameter, this db is only for demo
-
 
 #    url: jdbc:mysql://localhost:3306/balance?useSSL=false&useUnicode=true&characterEncoding=UTF-8&allowMultiQueries=true
 #    username: root

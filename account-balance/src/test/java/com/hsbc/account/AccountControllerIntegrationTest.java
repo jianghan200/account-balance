@@ -1,11 +1,10 @@
 package com.hsbc.account;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hsbc.account.repo.AccountBalance;
 import com.hsbc.account.repo.AccountBalanceRepo;
-import com.hsbc.account.repo.Transfer;
 import com.hsbc.account.service.AccountBalanceService;
-import org.junit.jupiter.api.BeforeAll;
+import com.hsbc.account.repo.AccountBalance;
+import com.hsbc.account.repo.Transfer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

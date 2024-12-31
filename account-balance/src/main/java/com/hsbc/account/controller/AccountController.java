@@ -1,9 +1,9 @@
 package com.hsbc.account.controller;
 
+import com.hsbc.commonlib.bean.TransferStatus;
+import com.hsbc.account.service.AccountBalanceService;
 import com.hsbc.account.repo.AccountBalance;
 import com.hsbc.account.repo.Transfer;
-import com.hsbc.account.repo.TransferStatus;
-import com.hsbc.account.service.AccountBalanceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
