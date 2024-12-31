@@ -1,0 +1,3 @@
+endpoint:
+  transaction: http://transaction:8081
+  account-balance: http://account-balance:8082
