@@ -16,7 +16,12 @@ CREATE TABLE IF NOT EXISTS transfer_log
     status         varchar(16)   NOT NULL,
     create_time    timestamp     NOT NULL DEFAULT now(),
     update_time    timestamp     NOT NULL DEFAULT now(),
-    version        integer       NOT NULL DEFAULT 0
+    version        integer       NOT NULL DEFAULT 0,
+
+    pay_status    varchar(16),
+    pay_time      timestamp,
+    receive_status  varchar(16),
+    receive_status  timestamp
 );
 
 CREATE INDEX idx_tranfer_log_status ON transaction_log (status);

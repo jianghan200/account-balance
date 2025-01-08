@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
+
 @Validated
 @RestController("/v1/account")
 @Slf4j
@@ -48,6 +50,13 @@ public class AccountController {
         }else {
             return ResponseEntity.status(HttpStatus.OK).body("Failed to process");
         }
+    }
+
+    @PostMapping("/account:transferWithRedisLock")
+    public ResponseEntity<String> transferWithRedisLock( @RequestBody Transfer transfer) {
+        log.info(transfer.toString());
+        TransferStatus status = accountService.persistAndExecuteByRedisLock(transfer);
+        return ResponseEntity.status(HttpStatus.OK).body("Transaction " + transfer.getTransactionId() +" processed successfully");
     }
 
 }

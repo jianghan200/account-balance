@@ -19,6 +19,7 @@ import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.annotation.Isolation;
@@ -80,7 +81,7 @@ public class AccountBalanceService {
      * 可以通过维护用户是否是高频更新用户来决定是否使用悲观锁
      * 此函数执行扣减动作，如为收款，amount 为负数
      * @param transactionId
-     * @param userId
+     * @param accountId
      * @param amount
      * @param isPay
      * @return
@@ -136,6 +137,93 @@ public class AccountBalanceService {
         return UpdateBalanceStatus.FAILED;
     }
 
+
+    /**
+     * 处理转账逻辑
+     * @param transfer
+     */
+    @Caching(evict = {
+            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#transfer.fromAccountId"),
+            @CacheEvict(value = RedisConfig.ACCOUNT_BALANCE_CACHE, key = "#transfer.toAccountId")
+    })
+    public TransferStatus persistAndExecuteByRedisLock(Transfer transfer) {
+        try {
+            // 交易记录，这里保证了交易不会被重复处理
+            transferLogRepo.save(transfer);
+            AccountBalance accountBalance = updateBalanceByRedisLock(transfer, true);
+            if(accountBalance!=null) {
+                // 支付成功才收款
+                updateBalanceByRedisLock(transfer, false);
+            }
+            return TransferStatus.COMPLETED;
+        } catch (Exception ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "";
+            log.error(transfer.getTransactionId() + " " + message);
+            // 将处理失败消息异步发送出去
+            transfer.setStatus(TransferStatus.FAILED.name());
+            transferLogRepo.save(transfer);
+            return TransferStatus.FAILED;
+        }
+    }
+
+    public TransferStatus receivedByRedisLock(Transfer transfer) {
+        try {
+            // 交易记录，这里保证了交易不会被重复处理
+            updateBalanceByRedisLock(transfer, false);
+            return TransferStatus.COMPLETED;
+        } catch (Exception ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "";
+            log.error(transfer.getTransactionId() + " " + message);
+            // 将处理失败消息异步发送出去
+            transfer.setStatus(TransferStatus.RECEIVED_FAILED.name());
+            transferLogRepo.save(transfer);
+            return TransferStatus.RECEIVED_FAILED;
+        }
+    }
+
+    @Retryable
+    @Transactional
+    public AccountBalance updateBalanceByRedisLock(Transfer transfer, boolean isPay) {
+        Long accountId = isPay ? transfer.getFromAccountId() : transfer.getToAccountId();
+
+        return processWithLock("request-lock:" + accountId, () -> {
+
+            AccountBalance accountBalance = accountBalanceRepo.findById(accountId)
+                    .orElseThrow(() -> new EntityNotFoundException("Can't find account " + accountId));
+
+            if(isPay && transfer.getAmount() > accountBalance.getBalance()) {
+                transfer.setStatus(TransferStatus.INSUFFICIENT_FUNDS.name());
+                transferLogRepo.save(transfer);
+                return accountBalance;
+            }
+
+            if(isPay){
+                accountBalance.setBalance(accountBalance.getBalance() - transfer.getAmount());
+            }else{
+                accountBalance.setBalance(accountBalance.getBalance() + transfer.getAmount());
+            }
+
+            accountBalance = accountBalanceRepo.save(accountBalance);
+            if(accountBalance != null){
+                if(isPay ){
+                    transfer.setPayStatus(TransferStatus.PAID.name());
+                    transfer.setPayTime(new Date());
+//                    transfer.setStatus(TransferStatus.PAID.name());
+//                    transfer.setUpdate_time(new Date());
+                    transferLogRepo.save(transfer);
+                }else{
+                    transfer.setReceiveStatus(TransferStatus.RECEIVED.name());
+                    transfer.setReceiveTime(new Date());
+//                    transfer.setStatus(TransferStatus.COMPLETED.name());
+//                    transfer.setUpdate_time(new Date());
+                    transferLogRepo.save(transfer);
+                }
+            }
+            return accountBalance;
+        });
+    }
+
+
     /**
      * 处理转账逻辑
      * @param transfer
@@ -168,6 +256,7 @@ public class AccountBalanceService {
             String message = ex.getMessage() != null ? ex.getMessage() : "";
             // 将处理失败消息异步发送出去
             transfer.setStatus(TransferStatus.FAILED.name());
+            transfer.setUpdate_time(new Date());
             transferLogRepo.save(transfer);
 //            eventPublisher.publishEvent(transfer);
             throw ex;
@@ -253,4 +342,44 @@ public class AccountBalanceService {
             throw new ConcurrentModificationException("LockKey " + lockKey + " is already being processed");
         }
     }
+
+
+    /**
+     * 使用分布式锁，锁竞争很激烈，测试中 40000 条转账有 4012 条获取锁失败，所以必须通过定时任务来筛选没有完成的转账
+     * 悲观锁场景其实也需要数据库记录转账状态，我们测试中悲观锁的锁竞争被数据库处理，测试样例中没有执行失败的情况，生产环境我们一样需要数据库来记录转账状态
+     * 获取所有创建时间超过 1 秒且 pay_status 为 PENDING 的 Transfer 条目
+     * 每 500 毫秒执行一次的方法
+     * 这里使用 Scheduled 是单线程顺序执行的，要提高性能可以使用多线程的形式优化，但是处理条目要注意状态更新和加锁防止重复处理
+     */
+    @Scheduled(fixedRate = 500)
+    public void processPendingTransfers() {
+        Date oneSecondAgo = new Date(System.currentTimeMillis() - 1000); // 获取一秒之前的时间
+        // 获取所有pay_status为PENDING的Transfer条目
+        List<Transfer> pendingTransfers = transferLogRepo.findByPayStatusAndCreateTimeBefore(oneSecondAgo);
+        if(pendingTransfers.size() >0){
+            log.info("processPendingTransfers " + pendingTransfers.size() + " items found");
+        }
+
+        // 逐条处理 Transfer条目
+        for (Transfer transfer : pendingTransfers) {
+            persistAndExecuteByRedisLock(transfer);
+        }
+    }
+
+    /**
+     * 获取所有付款成功（pay_status为PAID）超过 1 秒的且receive_status为PENDING的Transfer条目
+     */
+    @Scheduled(fixedRate = 500)
+    public void processPendingReceivedTransfers() {
+        Date oneSecondAgo = new Date(System.currentTimeMillis() - 1000); // 获取一秒之前的时间
+        List<Transfer> paidPendingReceiveTransfers = transferLogRepo.findByPayStatusAndReceiveStatusAndPayTimeBefore(oneSecondAgo);
+        if(paidPendingReceiveTransfers.size() > 0){
+            log.info("processPendingReceivedTransfers " + paidPendingReceiveTransfers.size() + " items found");
+        }
+        // 逐条处理 Transfer条目
+        for (Transfer transfer : paidPendingReceiveTransfers) {
+            receivedByRedisLock(transfer);
+        }
+    }
+
 }

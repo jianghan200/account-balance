@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.Instant;
+import java.util.Date;
 
 @Data
 @ToString
@@ -17,8 +18,8 @@ public class TransactionVO {
     private Long amount; // 100 为 1 元，每单位为 1 分，避免处理精度问题
 
     // 追踪转账状态
-    private String status = "PENDING";
-    private Instant create_time = Instant.EPOCH;
+    private String status = TransferStatus.PENDING.name();
+    private Date create_time;
 
     public TransactionVO(String transactionId, Long fromAccountId, Long toAccountId, Long amount){
         this.transactionId = transactionId;
