@@ -100,7 +100,7 @@ public class AccountBalanceService {
             // 创建Statement
             Statement statement = connection.createStatement();
 
-            String status = isPay?"PAID":"RECEIVED";
+            String status = isPay?TransferStatus.PAID.name():TransferStatus.RECEIVED.name();
             // 悲观锁 + 批量执行（减少一次与 MySQL 的交互）, 扣款的时候需要检测余额是否充足
             String sql = new StringBuilder("SELECT * FROM account_balance WHERE account_id = ").append(accountId).append(" FOR UPDATE ;\n")
                     .append("UPDATE account_balance SET balance = balance - ").append(amount).append(" WHERE account_id = " )

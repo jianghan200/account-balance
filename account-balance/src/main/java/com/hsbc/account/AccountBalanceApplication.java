@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableJpaAuditing
 @EnableTransactionManagement
 @SpringBootApplication
-@EnableScheduling
+// 定时任务在测试redis分布式锁方案的时候打开
+//@EnableScheduling
 public class AccountBalanceApplication {
 
     public static void main(String[] args) {
