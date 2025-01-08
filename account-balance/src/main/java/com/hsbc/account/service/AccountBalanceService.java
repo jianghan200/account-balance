@@ -100,10 +100,13 @@ public class AccountBalanceService {
             // 创建Statement
             Statement statement = connection.createStatement();
 
+            String status = isPay?"PAID":"RECEIVED";
             // 悲观锁 + 批量执行（减少一次与 MySQL 的交互）, 扣款的时候需要检测余额是否充足
             String sql = new StringBuilder("SELECT * FROM account_balance WHERE account_id = ").append(accountId).append(" FOR UPDATE ;\n")
                     .append("UPDATE account_balance SET balance = balance - ").append(amount).append(" WHERE account_id = " )
                     .append(accountId).append(" and balance > ").append(amount).append(";")
+                    .append("UPDATE transfer_log SET status = '").append(status).append("' WHERE transaction_id = '" )
+                    .append(transactionId).append("';")
                     .toString();
             // 这里也可以再增加一个支付状态的更新，从而处理极端情况
 
